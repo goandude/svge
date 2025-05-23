@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SVGedit with Gemini AI</title>
+    <link href="./svgedit.css" rel="stylesheet" media="all">
+    <style>
+        body {
+            margin: 0;
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #app-container {
+            display: flex;
+            flex-grow: 1;
+            height: calc(100vh - 50px);
+            overflow: hidden;
+        }
+
+        #controls-panel {
+            width: 35%;
+            min-width: 350px;
+            max-width: 35%;
+            padding: 15px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #ccc;
+            background-color: #f8f9fa;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        #controls-panel label {
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        #api-key-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+        }
+
+        #api-key-input {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        #description-section {
+            margin-bottom: 20px;
+        }
+
+        #description-input {
+            width: 100%;
+            height: 120px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            padding: 8px;
+            font-family: Arial, sans-serif;
+            resize: vertical;
+        }
+
+        #generate-svg {
+            padding: 10px 15px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-bottom: 10px;
+            width: 100%;
+        }
+
+        #generate-svg:hover:not(:disabled) {
+            background-color: #218838;
+        }
+
+        #generate-svg:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+
+        #svg-section {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #svg-input {
+            width: 100%;
+            flex-grow: 1;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            padding: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            resize: none;
+        }
+
+        #submit-svg {
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        #submit-svg:hover {
+            background-color: #0056b3;
+        }
+
+        #editor-panel {
+            flex: 1;
+            height: 100%;
+            min-width: 0;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+        }
+
+        #header {
+            padding: 10px;
+            background-color: #333;
+            color: white;
+            text-align: center;
+            height: 50px;
+            box-sizing: border-box;
+            flex-shrink: 0;
+        }
+
+        .loading {
+            opacity: 0.6;
+        }
+
+        .status-message {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .status-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .small-text {
+            font-size: 11px;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="header">
+        <h1>SVG Editor with Gemini AI</h1>
+    </div>
+
+    <div id="app-container">
+        <div id="controls-panel">
+            <div id="api-key-section">
+                <label for="api-key-input">Gemini API Key:</label>
+                <input type="password" id="api-key-input" placeholder="Enter your Gemini API key here...">
+                <div class="small-text">Get your API key from <a href="https://makersuite.google.com/app/apikey" target="_blank">Google AI Studio</a></div>
+            </div>
+
+            <div id="description-section">
+                <label for="description-input">Describe your SVG:</label>
+                <textarea id="description-input" placeholder="Describe what you want to create, e.g., 'A blue circle with a red border and white text saying Hello World in the center'"></textarea>
+                <button id="generate-svg">Generate SVG with AI</button>
+                <div id="status-container"></div>
+            </div>
+
+            <div id="svg-section">
+                <label for="svg-input">Generated SVG XML Code:</label>
+                <textarea id="svg-input" placeholder="Generated SVG will appear here..."><svg width="400" height="110" xmlns="http://www.w3.org/2000/svg"><rect width="300" height="100" style="fill:rgb(0,0,255);stroke-width:3;stroke:rgb(0,0,0)" /><text x="20" y="60" fill="white" font-size="45">Hello!</text></svg></textarea>
+                <button id="submit-svg">Render SVG in Editor</button>
+            </div>
+        </div>
+
+        <div id="editor-panel">
+            <div id="container"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import Editor from './Editor.js';
+        
+        // Import Google AI SDK from CDN
+        import { GoogleGenerativeAI } from 'https://esm.run/@google/generative-ai';
+
+        const svgEditor = new Editor(document.getElementById('container'));
+
+        svgEditor.setConfig({
+            allowInitialUserOverride: true,
+            extensions: [],
+            noDefaultExtensions: false,
+            userExtensions: [],
+        });
+
+        svgEditor.init();
+
+        // Get DOM elements
+        const apiKeyInput = document.getElementById('api-key-input');
+        const descriptionInput = document.getElementById('description-input');
+        const generateButton = document.getElementById('generate-svg');
+        const svgInput = document.getElementById('svg-input');
+        const submitButton = document.getElementById('submit-svg');
+        const statusContainer = document.getElementById('status-container');
+
+        // Function to show status messages
+        function showStatus(message, type = 'info') {
+            statusContainer.innerHTML = `<div class="status-message status-${type}">${message}</div>`;
+            setTimeout(() => {
+                if (statusContainer.innerHTML.includes(message)) {
+                    statusContainer.innerHTML = '';
+                }
+            }, 5000);
+        }
+
+        // Function to get available models
+        async function getAvailableModels(apiKey) {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+            
+            if (!response.ok) {
+                throw new Error(`Failed to fetch models: ${response.status} ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            return data.models || [];
+        }
+
+        // Function to find the best available model for text generation
+        function findBestModel(models) {
+            // Priority order of preferred models
+            const preferredModels = [
+                'gemini-1.5-pro-latest',
+                'gemini-1.5-pro',
+                'gemini-1.5-flash-latest', 
+                'gemini-1.5-flash',
+                'gemini-1.0-pro-latest',
+                'gemini-1.0-pro',
+                'gemini-pro'
+            ];
+
+            for (const preferred of preferredModels) {
+                const model = models.find(m => 
+                    m.name.includes(preferred) && 
+                    m.supportedGenerationMethods && 
+                    m.supportedGenerationMethods.includes('generateContent')
+                );
+                if (model) {
+                    return model.name.split('/').pop(); // Extract model name from full path
+                }
+            }
+
+            // Fallback: find any model that supports generateContent
+            const fallbackModel = models.find(m => 
+                m.supportedGenerationMethods && 
+                m.supportedGenerationMethods.includes('generateContent')
+            );
+            
+            if (fallbackModel) {
+                return fallbackModel.name.split('/').pop();
+            }
+
+            throw new Error('No suitable model found for text generation');
+        }
+
+        // Function to call Gemini API
+        async function generateSVGWithGemini(description, apiKey) {
+            const prompt = `Create SVG XML code based on this description: "${description}"
+
+Please follow these guidelines:
+1. Create clean, valid SVG XML code
+2. Use appropriate dimensions (typically 400x400 or similar)
+3. Include the xmlns attribute: xmlns="http://www.w3.org/2000/svg"
+4. Use semantic colors and styling
+5. Make sure text is readable with appropriate font sizes
+6. Center elements appropriately
+7. Only return the SVG XML code, no explanations or markdown formatting
+
+Description: ${description}`;
+
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{
+                            text: prompt
+                        }]
+                    }]
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            
+            if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+                throw new Error('Invalid response format from Gemini API');
+            }
+
+            let svgContent = data.candidates[0].content.parts[0].text;
+            
+            // Clean up the response - remove markdown code blocks if present
+            svgContent = svgContent.replace(/```svg\n?/g, '').replace(/```\n?/g, '').trim();
+            
+            // Validate that it's SVG content
+            if (!svgContent.includes('<svg') || !svgContent.includes('</svg>')) {
+                throw new Error('Generated content does not appear to be valid SVG');
+            }
+
+            return svgContent;
+        }
+
+        // Generate SVG button event listener
+        generateButton.addEventListener('click', async () => {
+            const apiKey = apiKeyInput.value.trim();
+            const description = descriptionInput.value.trim();
+
+            if (!apiKey) {
+                showStatus('Please enter your Gemini API key', 'error');
+                return;
+            }
+
+            if (!description) {
+                showStatus('Please enter a description for your SVG', 'error');
+                return;
+            }
+
+            generateButton.disabled = true;
+            generateButton.textContent = 'Generating...';
+            generateButton.classList.add('loading');
+            showStatus('Generating SVG with Gemini AI...', 'info');
+
+            try {
+                const svgContent = await generateSVGWithGemini(description, apiKey);
+                svgInput.value = svgContent;
+                showStatus('SVG generated successfully! Click "Render SVG in Editor" to view it.', 'success');
+            } catch (error) {
+                console.error('Error generating SVG:', error);
+                showStatus(`Error: ${error.message}`, 'error');
+            } finally {
+                generateButton.disabled = false;
+                generateButton.textContent = 'Generate SVG with AI';
+                generateButton.classList.remove('loading');
+            }
+        });
+
+        // Submit SVG button event listener
+        submitButton.addEventListener('click', () => {
+            const svgString = svgInput.value.trim();
+            if (svgString) {
+                try {
+                    svgEditor.loadFromString(svgString);
+                    showStatus('SVG loaded into editor successfully!', 'success');
+                    console.log("SVG content loaded into editor.");
+                    
+                    // Remove focus from text inputs after loading SVG
+                    document.activeElement.blur();
+                } catch (error) {
+                    showStatus('Error loading SVG into editor. Please check the SVG syntax.', 'error');
+                    console.error('Error loading SVG:', error);
+                }
+            } else {
+                showStatus('Please generate or paste SVG XML code first.', 'error');
+            }
+        });
+
+        // Add click event listener to editor panel to remove focus from text inputs
+        document.getElementById('editor-panel').addEventListener('click', (e) => {
+            // Remove focus from any active text inputs
+            if (document.activeElement && 
+                (document.activeElement.tagName === 'INPUT' || 
+                 document.activeElement.tagName === 'TEXTAREA')) {
+                document.activeElement.blur();
+            }
+        });
+
+        // Add mousedown event to container to ensure focus is removed
+        document.getElementById('container').addEventListener('mousedown', (e) => {
+            // Remove focus from text inputs when clicking on SVG editor
+            if (document.activeElement && 
+                (document.activeElement.tagName === 'INPUT' || 
+                 document.activeElement.tagName === 'TEXTAREA')) {
+                document.activeElement.blur();
+            }
+        });
+
+        // Allow Enter key to trigger generation (with Ctrl/Cmd)
+        descriptionInput.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                generateButton.click();
+            }
+        });
+
+        // Test API connection button
+        const testApiButton = document.createElement('button');
+        testApiButton.textContent = 'Test API Connection';
+        testApiButton.style.cssText = `
+            padding: 5px 10px;
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-top: 5px;
+        `;
+        
+        testApiButton.addEventListener('click', async () => {
+            const apiKey = apiKeyInput.value.trim();
+            if (!apiKey) {
+                showStatus('Please enter your API key first', 'error');
+                return;
+            }
+            
+            try {
+                testApiButton.disabled = true;
+                testApiButton.textContent = 'Testing...';
+                
+                const genAI = new GoogleGenerativeAI(apiKey);
+                const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+                const result = await model.generateContent("Hello! Just testing the connection.");
+                const response = await result.response;
+                const text = response.text();
+                
+                console.log('API Test Response:', text);
+                showStatus('API connection successful!', 'success');
+                
+            } catch (error) {
+                console.error('API Test Error:', error);
+                showStatus(`API test failed: ${error.message}`, 'error');
+            } finally {
+                testApiButton.disabled = false;
+                testApiButton.textContent = 'Test API Connection';
+            }
+        });
+        
+        document.getElementById('api-key-section').appendChild(testApiButton);
+        const savedApiKey = localStorage.getItem('gemini-api-key');
+        if (savedApiKey) {
+            apiKeyInput.value = savedApiKey;
+        }
+
+        // Save API key to localStorage when changed
+        apiKeyInput.addEventListener('change', () => {
+            const apiKey = apiKeyInput.value.trim();
+            if (apiKey) {
+                localStorage.setItem('gemini-api-key', apiKey);
+            } else {
+                localStorage.removeItem('gemini-api-key');
+            }
+        });
+    </script>
+</body>
+</html>
